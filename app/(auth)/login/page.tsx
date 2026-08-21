@@ -2,21 +2,34 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Building2, Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { loginSchema } from "@/features/auth/schemas";
+import { loginCorporate } from "@/features/auth/api";
+import { useAuth } from "@/features/auth/auth-context";
+import { ApiError, toastApiError } from "@/lib/api/errors";
+import type { LoginTokensResponse } from "@/features/auth/types";
+
+function isLoginWithTokens(data: unknown): data is LoginTokensResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "accessToken" in data &&
+    typeof (data as LoginTokensResponse).accessToken === "string"
+  );
+}
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { establishSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPending(true);
-    setTimeout(() => setPending(false), 1500);
-  };
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"email" | "password", string>>>({});
 
   const inputCls = cn(
     "h-11 w-full rounded-lg border border-input bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors",
@@ -24,11 +37,63 @@ export default function LoginPage() {
     "disabled:cursor-not-allowed disabled:opacity-60",
   );
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFieldErrors({});
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      const flat = parsed.error.flatten().fieldErrors;
+      setFieldErrors({
+        email: flat.email?.[0],
+        password: flat.password?.[0],
+      });
+      return;
+    }
+
+    setPending(true);
+    try {
+      const data = await loginCorporate(parsed.data);
+
+      if ("requireOtp" in data && data.requireOtp && data.userId) {
+        router.push(`/verify-otp?userId=${encodeURIComponent(data.userId)}`);
+        return;
+      }
+
+      if (isLoginWithTokens(data)) {
+        establishSession({
+          accessToken: data.accessToken,
+          user: data.user,
+          organizations: data.organizations,
+        });
+        toast.success(data.message || "Signed in successfully");
+        router.replace("/dashboard");
+        return;
+      }
+
+      toast.error("Unexpected login response");
+    } catch (err) {
+      if (err instanceof ApiError && err.fieldErrors?.length) {
+        const next: Partial<Record<"email" | "password", string>> = {};
+        for (const fe of err.fieldErrors) {
+          const field = fe.field.replace(/^body\./, "");
+          if (field === "email" || field === "password") next[field] = fe.message;
+        }
+        if (Object.keys(next).length) {
+          setFieldErrors(next);
+          return;
+        }
+      }
+      toast.error(toastApiError(err));
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background px-4 py-8">
       <ThemeToggle className="fixed top-4 right-4 z-20" />
 
-      {/* Logo */}
       <div className="mb-8 flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
           <Building2 className="h-4.5 w-4.5 text-primary-foreground" />
@@ -39,18 +104,14 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Card */}
       <div className="w-full max-w-sm">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-foreground">Welcome back</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Sign in to your corporate account
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Sign in to your corporate account</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Email */}
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">
                 Work email
@@ -60,16 +121,23 @@ export default function LoginPage() {
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@company.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((f) => ({ ...f, email: undefined }));
+                  }}
                   disabled={pending}
+                  aria-invalid={!!fieldErrors.email}
                   className={inputCls}
                 />
               </div>
+              {fieldErrors.email ? (
+                <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>
+              ) : null}
             </div>
 
-            {/* Password */}
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label htmlFor="password" className="text-sm font-medium text-foreground">
@@ -84,10 +152,15 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setFieldErrors((f) => ({ ...f, password: undefined }));
+                  }}
                   disabled={pending}
+                  aria-invalid={!!fieldErrors.password}
                   className={cn(inputCls, "pr-10")}
                 />
                 <button
@@ -100,21 +173,11 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {fieldErrors.password ? (
+                <p className="mt-1 text-xs text-destructive">{fieldErrors.password}</p>
+              ) : null}
             </div>
 
-            {/* Remember me */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="remember"
-                className="h-4 w-4 rounded border-input bg-card text-primary accent-primary"
-              />
-              <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-                Keep me signed in
-              </label>
-            </div>
-
-            {/* Submit */}
             <button
               type="submit"
               disabled={pending}
