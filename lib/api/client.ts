@@ -85,3 +85,81 @@ export async function apiPost<TResponse, TBody extends object | FormData>(
   if (!res.ok) throw ApiError.fromUnknown(res.status, data);
   return data as TResponse;
 }
+
+export async function apiPatch<TResponse, TBody extends object>(
+  path: string,
+  body: TBody,
+  init?: Omit<RequestInit, "method" | "body">,
+): Promise<TResponse> {
+  const headers = withAuthHeaders(init);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path), {
+      method: "PATCH",
+      credentials: "include",
+      ...init,
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw unreachableApiError();
+  }
+
+  const data = await parseJson<unknown>(res);
+  if (!res.ok) throw ApiError.fromUnknown(res.status, data);
+  return data as TResponse;
+}
+
+export async function apiPut<TResponse, TBody extends object>(
+  path: string,
+  body: TBody,
+  init?: Omit<RequestInit, "method" | "body">,
+): Promise<TResponse> {
+  const headers = withAuthHeaders(init);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path), {
+      method: "PUT",
+      credentials: "include",
+      ...init,
+      headers,
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw unreachableApiError();
+  }
+
+  const data = await parseJson<unknown>(res);
+  if (!res.ok) throw ApiError.fromUnknown(res.status, data);
+  return data as TResponse;
+}
+
+export async function apiDelete<TResponse>(
+  path: string,
+  init?: Omit<RequestInit, "method" | "body">,
+): Promise<TResponse> {
+  const headers = withAuthHeaders(init);
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path), {
+      method: "DELETE",
+      credentials: "include",
+      ...init,
+      headers,
+    });
+  } catch {
+    throw unreachableApiError();
+  }
+
+  const data = await parseJson<unknown>(res);
+  if (!res.ok) throw ApiError.fromUnknown(res.status, data);
+  return data as TResponse;
+}

@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Building2, Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CurrencySwitcher } from "@/components/currency-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { loginSchema } from "@/features/auth/schemas";
 import { loginCorporate } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/auth-context";
@@ -23,14 +25,30 @@ function isLoginWithTokens(data: unknown): data is LoginTokensResponse {
 }
 
 export default function LoginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
+      <LoginForm />
+    </React.Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
   const { establishSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<"email" | "password", string>>>({});
-
+  
   const inputCls = cn(
     "h-11 w-full rounded-lg border border-input bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors",
     "focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30",
@@ -67,7 +85,11 @@ export default function LoginPage() {
           organizations: data.organizations,
         });
         toast.success(data.message || "Signed in successfully");
-        router.replace("/dashboard");
+        const safeNext =
+          nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+            ? nextPath
+            : "/dashboard";
+        router.replace(safeNext);
         return;
       }
 
@@ -92,7 +114,11 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background px-4 py-8">
-      <ThemeToggle className="fixed top-4 right-4 z-20" />
+      <div className="fixed top-4 right-4 z-20 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+        <LanguageSwitcher compact className="w-36" />
+        <CurrencySwitcher compact className="w-36" />
+        <ThemeToggle />
+      </div>
 
       <div className="mb-8 flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">

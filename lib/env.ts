@@ -9,6 +9,5 @@ export function getPublicApiBaseUrl(): string {
 }
 
 export function assertApiConfigured(): string {
-  // Empty string is valid when using Next.js rewrites to the backend.
   return getPublicApiBaseUrl();
 }

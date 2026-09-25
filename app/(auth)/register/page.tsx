@@ -27,6 +27,14 @@ import type { Value } from "react-phone-number-input";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignupPhoneField } from "@/components/signup-phone-field";
+import { FormSelect } from "@/components/form-select";
+import { DatePickerField } from "@/components/date-picker-field";
+import {
+  COMPANY_SIZE_OPTIONS,
+  COUNTRY_OPTIONS,
+  INDUSTRY_OPTIONS,
+  optionLabel,
+} from "@/features/organization/form-options";
 import {
   accountStepSchema,
   accountStepToApiPhone,
@@ -82,7 +90,10 @@ export default function RegisterPage() {
 
   const [org, setOrg] = useState({
     companyName: "",
+    legalEntityName: "",
     tradeLicenseNumber: "",
+    tradeLicenseExpiry: "",
+    vatTrnNumber: "",
     industry: "",
     companySize: "",
     website: "",
@@ -90,6 +101,7 @@ export default function RegisterPage() {
     city: "",
     address: "",
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [orgErrors, setOrgErrors] = useState<Record<string, string>>({});
 
   const [docs, setDocs] = useState<Record<DocKey, DocState>>({
@@ -108,6 +120,15 @@ export default function RegisterPage() {
   const setAcc = (key: keyof typeof account) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setAccount((p) => ({ ...p, [key]: e.target.value }));
     setAccountErrors((errs) => {
+      const next = { ...errs };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const setOrgValue = (key: keyof typeof org, value: string) => {
+    setOrg((p) => ({ ...p, [key]: value }));
+    setOrgErrors((errs) => {
       const next = { ...errs };
       delete next[key];
       return next;
@@ -225,6 +246,12 @@ export default function RegisterPage() {
         });
       }
 
+      let logoUrl: string | undefined;
+      if (logoFile) {
+        const uploadedLogo = await uploadCorporateDocument(logoFile);
+        logoUrl = uploadedLogo.data.url;
+      }
+
       let phoneParts: { phone: string; phoneCountryCode: string };
       try {
         phoneParts = accountStepToApiPhone(account.phoneE164);
@@ -244,6 +271,10 @@ export default function RegisterPage() {
         password: account.password,
         companyName: org.companyName.trim(),
         tradeLicenseNumber: org.tradeLicenseNumber.trim(),
+        tradeLicenseExpiry: org.tradeLicenseExpiry,
+        legalEntityName: org.legalEntityName.trim(),
+        vatTrnNumber: org.vatTrnNumber.trim(),
+        logoUrl,
         industry: org.industry || undefined,
         companySize: org.companySize || undefined,
         website: org.website || undefined,
@@ -268,7 +299,10 @@ export default function RegisterPage() {
         ]);
         const orgFields = new Set([
           "companyName",
+          "legalEntityName",
           "tradeLicenseNumber",
+          "tradeLicenseExpiry",
+          "vatTrnNumber",
           "industry",
           "companySize",
           "website",
@@ -323,12 +357,6 @@ export default function RegisterPage() {
 
   const inputCls = cn(
     "h-11 w-full rounded-lg border border-input bg-card pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors",
-    "focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30",
-    "disabled:cursor-not-allowed disabled:opacity-60",
-  );
-
-  const selectCls = cn(
-    "h-11 w-full rounded-lg border border-input bg-card pl-10 pr-4 text-sm text-foreground transition-colors appearance-none",
     "focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30",
     "disabled:cursor-not-allowed disabled:opacity-60",
   );
@@ -578,39 +606,80 @@ export default function RegisterPage() {
                       {orgErrors.tradeLicenseNumber ? <p className="mt-1 text-xs text-destructive">{orgErrors.tradeLicenseNumber}</p> : null}
                     </div>
 
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">Legal entity name</label>
+                      <div className="relative">
+                        <Briefcase className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <input className={inputCls} value={org.legalEntityName} onChange={setOrgField("legalEntityName")} disabled={pending} placeholder="Acme Events LLC" />
+                      </div>
+                      {orgErrors.legalEntityName ? <p className="mt-1 text-xs text-destructive">{orgErrors.legalEntityName}</p> : null}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-foreground">VAT / TRN number</label>
+                        <input className={cn(inputCls, "!pl-3")} value={org.vatTrnNumber} onChange={setOrgField("vatTrnNumber")} disabled={pending} placeholder="100123456789003" />
+                        {orgErrors.vatTrnNumber ? <p className="mt-1 text-xs text-destructive">{orgErrors.vatTrnNumber}</p> : null}
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-foreground">License expiry</label>
+                        <DatePickerField
+                          value={org.tradeLicenseExpiry}
+                          onChange={(v) => setOrgValue("tradeLicenseExpiry", v)}
+                          disabled={pending}
+                          placeholder="Select expiry date"
+                          minDate={new Date()}
+                          aria-invalid={Boolean(orgErrors.tradeLicenseExpiry)}
+                        />
+                        {orgErrors.tradeLicenseExpiry ? <p className="mt-1 text-xs text-destructive">{orgErrors.tradeLicenseExpiry}</p> : null}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-foreground">
+                        Company logo <span className="text-muted-foreground font-normal">(optional)</span>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground hover:bg-accent/40">
+                        <Upload className="h-4 w-4 shrink-0" />
+                        <span>{logoFile ? logoFile.name : "Upload PNG or JPG (max 10 MB)"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={pending}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) setLogoFile(f);
+                          }}
+                        />
+                      </label>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 block text-sm font-medium text-foreground">Industry</label>
-                        <div className="relative">
-                          <Briefcase className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <select className={selectCls} value={org.industry} onChange={setOrgField("industry")} disabled={pending}>
-                            <option value="">Select</option>
-                            <option value="technology">Technology</option>
-                            <option value="finance">Finance & Banking</option>
-                            <option value="healthcare">Healthcare</option>
-                            <option value="education">Education</option>
-                            <option value="realestate">Real Estate</option>
-                            <option value="hospitality">Hospitality</option>
-                            <option value="government">Government</option>
-                            <option value="retail">Retail</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
+                        <FormSelect
+                          value={org.industry}
+                          onValueChange={(v) => setOrgValue("industry", v)}
+                          options={INDUSTRY_OPTIONS}
+                          placeholder="Select industry"
+                          disabled={pending}
+                          icon={Briefcase}
+                          aria-invalid={Boolean(orgErrors.industry)}
+                        />
                         {orgErrors.industry ? <p className="mt-1 text-xs text-destructive">{orgErrors.industry}</p> : null}
                       </div>
                       <div>
                         <label className="mb-1 block text-sm font-medium text-foreground">Company size</label>
-                        <div className="relative">
-                          <Users className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <select className={selectCls} value={org.companySize} onChange={setOrgField("companySize")} disabled={pending}>
-                            <option value="">Select</option>
-                            <option value="1-10">1–10</option>
-                            <option value="11-50">11–50</option>
-                            <option value="51-200">51–200</option>
-                            <option value="201-500">201–500</option>
-                            <option value="501+">501+</option>
-                          </select>
-                        </div>
+                        <FormSelect
+                          value={org.companySize}
+                          onValueChange={(v) => setOrgValue("companySize", v)}
+                          options={COMPANY_SIZE_OPTIONS}
+                          placeholder="Select size"
+                          disabled={pending}
+                          icon={Users}
+                          aria-invalid={Boolean(orgErrors.companySize)}
+                        />
                         {orgErrors.companySize ? <p className="mt-1 text-xs text-destructive">{orgErrors.companySize}</p> : null}
                       </div>
                     </div>
@@ -629,19 +698,15 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 block text-sm font-medium text-foreground">Country</label>
-                        <div className="relative">
-                          <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <select className={selectCls} value={org.country} onChange={setOrgField("country")} disabled={pending}>
-                            <option value="">Select</option>
-                            <option value="AE">UAE</option>
-                            <option value="SA">Saudi Arabia</option>
-                            <option value="BH">Bahrain</option>
-                            <option value="QA">Qatar</option>
-                            <option value="KW">Kuwait</option>
-                            <option value="OM">Oman</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
+                        <FormSelect
+                          value={org.country}
+                          onValueChange={(v) => setOrgValue("country", v)}
+                          options={COUNTRY_OPTIONS}
+                          placeholder="Select country"
+                          disabled={pending}
+                          icon={MapPin}
+                          aria-invalid={Boolean(orgErrors.country)}
+                        />
                         {orgErrors.country ? <p className="mt-1 text-xs text-destructive">{orgErrors.country}</p> : null}
                       </div>
                       <div>
@@ -702,9 +767,13 @@ export default function RegisterPage() {
                       <div className="rounded-lg border border-border p-3">
                         <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Organization</h3>
                         <ReviewRow label="Company" value={org.companyName} />
+                        <ReviewRow label="Legal entity" value={org.legalEntityName} />
                         <ReviewRow label="License #" value={org.tradeLicenseNumber} />
-                        <ReviewRow label="Industry" value={org.industry} />
-                        <ReviewRow label="Location" value={[org.city, org.country].filter(Boolean).join(", ")} />
+                        <ReviewRow label="VAT/TRN" value={org.vatTrnNumber} />
+                        <ReviewRow label="License expiry" value={org.tradeLicenseExpiry} />
+                        <ReviewRow label="Logo" value={logoFile?.name || "Not uploaded"} />
+                        <ReviewRow label="Industry" value={optionLabel(INDUSTRY_OPTIONS, org.industry)} />
+                        <ReviewRow label="Location" value={[org.city, optionLabel(COUNTRY_OPTIONS, org.country)].filter(Boolean).join(", ")} />
                       </div>
                       <div className="rounded-lg border border-border p-3">
                         <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide mb-1.5">Documents</h3>

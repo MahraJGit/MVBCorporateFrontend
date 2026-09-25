@@ -42,7 +42,10 @@ export const accountStepSchema = z
 
 export const organizationStepSchema = z.object({
   companyName: z.string().trim().min(2, "Organization name is required"),
+  legalEntityName: z.string().trim().min(2, "Legal entity name is required").max(200),
   tradeLicenseNumber: z.string().trim().min(2, "Trade license number is required"),
+  tradeLicenseExpiry: z.string().trim().min(1, "Trade license expiry is required"),
+  vatTrnNumber: z.string().trim().min(2, "VAT/TRN number is required").max(50),
   industry: z.string().trim().min(1, "Select an industry"),
   companySize: z.string().trim().min(1, "Select company size"),
   website: z

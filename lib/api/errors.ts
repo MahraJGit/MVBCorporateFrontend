@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 export type BackendFieldError = {
   field: string;
   message: string;
@@ -6,12 +8,24 @@ export type BackendFieldError = {
 export class ApiError extends Error {
   readonly statusCode: number;
   readonly fieldErrors?: BackendFieldError[];
+  readonly code?: string;
 
-  constructor(statusCode: number, message: string, fieldErrors?: BackendFieldError[]) {
+  constructor(
+    statusCode: number,
+    message: string,
+    fieldErrors?: BackendFieldError[],
+    code?: string,
+  ) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;
     this.fieldErrors = fieldErrors;
+    this.code = code;
+  }
+
+  /** Alias used by some call sites. */
+  get status() {
+    return this.statusCode;
   }
 
   static fromUnknown(statusCode: number, body: unknown): ApiError {
@@ -27,19 +41,47 @@ export class ApiError extends Error {
           return { field: fe.field, message: fe.message };
         })
         .filter(Boolean) as BackendFieldError[] | undefined;
-      return new ApiError(statusCode, message, fieldErrors);
+      let code: string | undefined;
+      if (o.errors && typeof o.errors === "object" && !Array.isArray(o.errors)) {
+        const extra = o.errors as Record<string, unknown>;
+        if (typeof extra.code === "string") code = extra.code;
+      }
+      return new ApiError(statusCode, message, fieldErrors, code);
     }
     return new ApiError(statusCode, "Request failed");
   }
 }
 
-export function toastApiError(err: unknown): string {
+/**
+ * Resolve an error message. When `fallback` is provided, also shows a toast
+ * (used by pages that call `toastApiError(err, "…")` without wrapping toast.error).
+ * When omitted, returns the string only (caller toasts, e.g. login).
+ */
+export function toastApiError(err: unknown, fallback?: string): string {
+  let message = "Something went wrong. Please try again.";
+
   if (err instanceof ApiError) {
-    // Prefer a global message; field errors should be shown inline by the caller.
-    return err.message || "Something went wrong. Please try again.";
+    if (err.fieldErrors?.length === 1) {
+      message = err.fieldErrors[0].message;
+    } else if (err.fieldErrors && err.fieldErrors.length > 1) {
+      message =
+        fallback ||
+        err.fieldErrors.map((fe) => fe.message).join(" · ") ||
+        err.message;
+    } else {
+      message = err.message || fallback || message;
+    }
+  } else if (err instanceof Error) {
+    message = err.message || fallback || message;
+  } else if (fallback) {
+    message = fallback;
   }
-  if (err instanceof Error) return err.message;
-  return "Something went wrong. Please try again.";
+
+  if (fallback !== undefined) {
+    toast.error(message);
+  }
+
+  return message;
 }
 
 /** Map backend field errors onto a local field-error record. Returns true if any mapped. */
@@ -61,4 +103,3 @@ export function applyApiFieldErrors(
   setErrors(next);
   return true;
 }
-

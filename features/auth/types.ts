@@ -16,7 +16,25 @@ export type CorporateOrganizationSummary = {
   name: string;
   slug: string;
   status: CorporateOrgStatus;
+  submissionCount?: number;
+  rejectedReason?: string | null;
   tradeLicenseNumber?: string;
+  tradeLicenseExpiry?: string | null;
+  legalEntityName?: string | null;
+  vatTrnNumber?: string | null;
+  logoUrl?: string | null;
+  about?: string | null;
+  billingEmail?: string | null;
+  billingAddress?: string | null;
+  preferredCurrency?: string;
+  timezone?: string;
+  fiscalYearStartMonth?: number;
+  industry?: string | null;
+  companySize?: string | null;
+  website?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
 };
 
 export type CorporateMembership = {
@@ -90,15 +108,22 @@ export type OrganizationDocumentType =
   | "VAT_CERTIFICATE"
   | "OTHER";
 
-export type RegisterRequestBody = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  phoneCountryCode: string;
-  password: string;
+export const MAX_ORG_SUBMISSIONS = 3;
+
+export type OrganizationVerificationMeta = {
+  maxSubmissions: number;
+  submissionCount: number;
+  remainingSubmissions: number;
+  canResubmit: boolean;
+};
+
+export type ResubmitRequestBody = {
   companyName: string;
   tradeLicenseNumber: string;
+  tradeLicenseExpiry?: string;
+  legalEntityName?: string;
+  vatTrnNumber?: string;
+  logoUrl?: string;
   industry?: string;
   companySize?: string;
   website?: string;
@@ -111,4 +136,13 @@ export type RegisterRequestBody = {
     fileName?: string;
     fileSize?: number;
   }>;
+};
+
+export type RegisterRequestBody = ResubmitRequestBody & {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  phoneCountryCode: string;
+  password: string;
 };
