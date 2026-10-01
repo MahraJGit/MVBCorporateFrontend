@@ -6,9 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Building2, Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CurrencySwitcher } from "@/components/currency-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { loginSchema } from "@/features/auth/schemas";
 import { loginCorporate } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/auth-context";
@@ -114,11 +112,7 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background px-4 py-8">
-      <div className="fixed top-4 right-4 z-20 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-        <LanguageSwitcher compact className="w-36" />
-        <CurrencySwitcher compact className="w-36" />
-        <ThemeToggle />
-      </div>
+      <ThemeToggle className="fixed top-4 right-4 z-20" />
 
       <div className="mb-8 flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
