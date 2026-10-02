@@ -40,7 +40,7 @@ export function refreshCorporateTokens() {
   return apiPost<RefreshTokensResponse, Record<string, never>>(
     `${AUTH_BASE}/refresh`,
     {},
-    withCookies,
+    { ...withCookies, skipAuthRetry: true },
   );
 }
 

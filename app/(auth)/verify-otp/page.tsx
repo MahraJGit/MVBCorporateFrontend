@@ -4,8 +4,9 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Building2, ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AuthBrandHeader } from "@/components/auth-brand-header";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { otpSchema } from "@/features/auth/schemas";
 import { verifyCorporateOtp } from "@/features/auth/api";
@@ -140,15 +141,7 @@ export default function VerifyOtpPage() {
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background px-4 py-8">
       <ThemeToggle className="fixed top-4 right-4 z-20" />
-      <div className="mb-8 flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
-          <Building2 className="h-4.5 w-4.5 text-primary-foreground" />
-        </div>
-        <div>
-          <p className="text-base font-semibold text-foreground leading-tight">MyVenueBooking</p>
-          <p className="text-[11px] text-muted-foreground">Corporate Portal</p>
-        </div>
-      </div>
+      <AuthBrandHeader />
       <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
         <VerifyOtpForm />
       </Suspense>

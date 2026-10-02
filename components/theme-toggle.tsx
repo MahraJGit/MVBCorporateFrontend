@@ -16,7 +16,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   }
 
   const isDark = theme === "dark";
-
+  
   return (
     <button
       type="button"

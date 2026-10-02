@@ -5,6 +5,7 @@ const USER = "mvb_corporate_user_json";
 const ORGS = "mvb_corporate_orgs_json";
 
 export const AUTH_CHANGED_EVENT = "mvb-corporate-auth-changed";
+export const AUTH_SESSION_EXPIRED_EVENT = "mvb-corporate-auth-session-expired";
 
 function storage(): Storage | null {
   if (typeof window === "undefined") return null;
@@ -14,6 +15,11 @@ function storage(): Storage | null {
 export function notifyAuthChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+export function notifyAuthSessionExpired() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
 }
 
 export function persistAuthSession(session: {

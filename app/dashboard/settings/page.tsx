@@ -245,8 +245,10 @@ export default function OrganizationSettingsPage() {
                 <OrganizationLogo
                   logoUrl={logoUrl}
                   name={form.name || "Organization"}
-                  className="h-16 w-16"
-                  iconClassName="h-7 w-7"
+                  fit="content"
+                  className="h-20 max-w-50"
+                  iconClassName="h-9 w-9"
+                  imageClassName="object-contain"
                 />
                 <label
                   className={cn(

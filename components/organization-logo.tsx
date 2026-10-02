@@ -11,11 +11,16 @@ export function OrganizationLogo({
   name,
   className,
   iconClassName,
+  imageClassName,
+  /** `box` fills a fixed frame; `content` sizes to the image up to max constraints. */
+  fit = "box",
 }: {
   logoUrl?: string | null;
   name: string;
   className?: string;
   iconClassName?: string;
+  imageClassName?: string;
+  fit?: "box" | "content";
 }) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(logoUrl));
@@ -46,25 +51,42 @@ export function OrganizationLogo({
     };
   }, [logoUrl]);
 
+  const isContent = fit === "content";
+
   return (
     <div
       className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary",
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg",
+        isContent && "w-fit",
         className,
       )}
     >
       {loading ? (
-        <Loader2 className={cn("animate-spin text-primary-foreground", iconClassName)} />
+        <Loader2 className={cn("animate-spin text-muted-foreground", iconClassName)} />
       ) : src ? (
-        <Image
-          src={src}
-          alt={`${name} logo`}
-          fill
-          className="object-cover"
-          unoptimized
-        />
+        isContent ? (
+          <Image
+            src={src}
+            alt={`${name} logo`}
+            width={200}
+            height={80}
+            className={cn(
+              "h-full w-auto max-w-full object-contain",
+              imageClassName,
+            )}
+            unoptimized
+          />
+        ) : (
+          <Image
+            src={src}
+            alt={`${name} logo`}
+            fill
+            className={cn("object-cover", imageClassName)}
+            unoptimized
+          />
+        )
       ) : (
-        <Building2 className={cn("text-primary-foreground", iconClassName)} />
+        <Building2 className={cn("text-muted-foreground", iconClassName)} />
       )}
     </div>
   );

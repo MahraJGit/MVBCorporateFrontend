@@ -11,14 +11,15 @@ import {
 } from "react";
 import {
   AUTH_CHANGED_EVENT,
+  AUTH_SESSION_EXPIRED_EVENT,
   clearAuthSession,
   getAccessToken,
   getAuthUser,
   hasPersistedAuthSession,
   persistAuthSession,
-  updateAccessToken,
 } from "./session-storage";
-import { fetchCorporateMe, logoutCorporate, refreshCorporateTokens } from "./api";
+import { fetchCorporateMe, logoutCorporate } from "./api";
+import { refreshAndApplySession } from "./coordinated-refresh";
 import type { CorporateMembership, CorporateUser } from "./types";
 
 type AuthContextValue = {
@@ -99,22 +100,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(me.data.user);
           setOrganizations(me.data.organizations as CorporateMembership[]);
         } catch {
-          try {
-            const refreshed = await refreshCorporateTokens();
-            if (cancelled) return;
-            updateAccessToken(refreshed.accessToken);
-            setAccessToken(refreshed.accessToken);
-            const me = await fetchCorporateMe();
-            if (cancelled) return;
-            setUser(me.data.user);
-            setOrganizations(me.data.organizations as CorporateMembership[]);
-          } catch {
-            clearAuthSession();
-            if (!cancelled) {
-              setAccessToken(null);
-              setUser(null);
-              setOrganizations([]);
+          const refreshed = await refreshAndApplySession();
+          if (cancelled) return;
+          if (refreshed) {
+            setAccessToken(getAccessToken());
+            try {
+              const me = await fetchCorporateMe();
+              if (cancelled) return;
+              setUser(me.data.user);
+              setOrganizations(me.data.organizations as CorporateMembership[]);
+            } catch {
+              clearAuthSession();
+              if (!cancelled) {
+                setAccessToken(null);
+                setUser(null);
+                setOrganizations([]);
+              }
             }
+          } else if (!cancelled) {
+            setAccessToken(null);
+            setUser(null);
+            setOrganizations([]);
           }
         }
         if (!cancelled) setIsReady(true);
@@ -122,22 +128,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Try cookie restore (refresh HttpOnly cookie)
-      try {
-        const refreshed = await refreshCorporateTokens();
-        if (cancelled) return;
-        updateAccessToken(refreshed.accessToken);
-        setAccessToken(refreshed.accessToken);
-        const me = await fetchCorporateMe();
-        if (cancelled) return;
-        persistAuthSession({
-          accessToken: refreshed.accessToken,
-          user: me.data.user,
-          organizations: me.data.organizations,
-        });
-        setUser(me.data.user);
-        setOrganizations(me.data.organizations as CorporateMembership[]);
-      } catch {
-        // no session
+      const restored = await refreshAndApplySession();
+      if (!cancelled && restored) {
+        setAccessToken(getAccessToken());
+        try {
+          const me = await fetchCorporateMe();
+          if (!cancelled) {
+            persistAuthSession({
+              accessToken: getAccessToken()!,
+              user: me.data.user,
+              organizations: me.data.organizations,
+            });
+            setUser(me.data.user);
+            setOrganizations(me.data.organizations as CorporateMembership[]);
+          }
+        } catch {
+          clearAuthSession();
+          if (!cancelled) {
+            setAccessToken(null);
+            setUser(null);
+            setOrganizations([]);
+          }
+        }
       }
 
       if (!cancelled) setIsReady(true);
@@ -146,10 +158,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void boot();
 
     const onAuthChanged = () => hydrateFromStorage();
+    const onSessionExpired = () => {
+      setAccessToken(null);
+      setUser(null);
+      setOrganizations([]);
+    };
     window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, onSessionExpired);
     return () => {
       cancelled = true;
       window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, onSessionExpired);
     };
   }, [hydrateFromStorage]);
 

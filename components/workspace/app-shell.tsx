@@ -138,15 +138,16 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   };
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-background">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-4">
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      <div className="flex shrink-0 flex-col items-center gap-3 border-b border-border px-4 py-5 text-center">
         <OrganizationLogo
           logoUrl={org?.logoUrl}
           name={org?.name ?? "Corporate"}
-          className="h-10 w-10"
-          iconClassName="h-5 w-5"
+          className="h-20 w-50"
+          iconClassName="h-9 w-9"
+          imageClassName="object-contain"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 w-full">
           <p className="truncate text-sm font-semibold text-foreground">
             {org?.name ?? "Corporate"}
           </p>
@@ -159,11 +160,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
         {visibleNav.map(navLink)}
       </nav>
 
-      <div className="space-y-3 border-t border-border p-3">
+      <div className="shrink-0 space-y-3 border-t border-border p-3">
         <div className="space-y-3">
           <LanguageSwitcher labeled />
           <CurrencySwitcher labeled />
@@ -201,8 +202,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             aria-label={t("nav.closeMenu")}
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute inset-y-0 inset-s-0 w-64 border-e border-border bg-background shadow-xl">
-            <div className="flex justify-end p-2">
+          <aside className="absolute inset-y-0 inset-s-0 flex w-64 flex-col border-e border-border bg-background shadow-xl">
+            <div className="flex shrink-0 justify-end p-2">
               <button
                 type="button"
                 className="rounded-lg p-2 text-muted-foreground hover:bg-accent"
@@ -212,7 +213,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {sidebar}
+            <div className="min-h-0 flex-1">{sidebar}</div>
           </aside>
         </div>
       ) : null}
@@ -228,7 +229,6 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
           <p className="min-w-0 flex-1 truncate text-sm font-semibold">{org?.name}</p>
-          <LanguageSwitcher compact className="w-auto min-w-28 max-w-36" />
         </header>
         <main key={locale} className="flex-1 p-4 sm:p-6 lg:p-8">
           {children}

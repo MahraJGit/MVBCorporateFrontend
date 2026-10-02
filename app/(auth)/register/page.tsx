@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Building2,
   Eye,
   EyeOff,
   Lock,
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import type { Value } from "react-phone-number-input";
 import { cn } from "@/lib/utils";
+import { AuthBrandHeader } from "@/components/auth-brand-header";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SignupPhoneField } from "@/components/signup-phone-field";
 import { FormSelect } from "@/components/form-select";
@@ -428,15 +428,7 @@ export default function RegisterPage() {
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background px-4 py-8">
       <ThemeToggle className="fixed top-4 right-4 z-20" />
 
-      <div className="mb-6 flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
-          <Building2 className="h-4.5 w-4.5 text-primary-foreground" />
-        </div>
-        <div>
-          <p className="text-base font-semibold text-foreground leading-tight">MyVenueBooking</p>
-          <p className="text-[11px] text-muted-foreground">Corporate Portal</p>
-        </div>
-      </div>
+      <AuthBrandHeader />
 
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-between px-2">
